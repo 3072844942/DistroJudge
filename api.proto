@@ -1,0 +1,64 @@
+syntax = "proto3";
+option go_package = "./api";
+
+package api;
+
+
+message Task {
+  string  Id = 1;
+
+  string  In = 2;
+  string  Code = 3;
+
+  enum Language {
+    C = 0;
+    JAVA = 1;
+    PYTHON = 2;
+    GOLANG = 3;
+  }
+  Language  type = 4;
+
+  uint64   CpuTime = 5;
+  uint64   Memory = 6;
+}
+
+message Result {
+  string Id = 1;
+
+  string Out = 2;
+  uint64 CpuTime = 3;
+  uint64 Memory = 4;
+}
+
+message ACK {
+  string Id = 1;
+}
+
+message Ping {
+  uint64 MaxPoolSize = 1;        // 最大工作线程
+}
+
+message Pong {
+  double Cpu = 1;                // cpu使用情况
+  uint64 MemoryAlloc = 2;        // 程序当前使用内存量
+  uint64 TotalAlloc = 3;         // 程序总分配内存量
+  uint64 Sys = 4;                // 系统内存
+  uint32 NumGC = 5;              // GC次数
+
+  uint64 ActiveCount = 6;        // 当前活跃任务数
+  uint64 CompletedTaskCount = 7; // 当前已完成任务数
+  uint64 WaitCount = 8;          // 当前等待任务数
+  uint64 MaxPoolSize = 9;        // 最大工作线程
+
+  int64 Time = 10;              // 当前系统时间
+}
+
+service DistroServer {
+  // 心跳检测， 更新状态配置
+  rpc Heart(Ping) returns (Pong);
+
+  // 提交任务
+  rpc Execute(Task) returns (ACK);
+  // 异步回执
+  rpc Caller(Result) returns (ACK);
+}
