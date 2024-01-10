@@ -1,0 +1,11 @@
+distro:
+    port: 50001
+    pool:
+        nax-pool-size: 10
+
+log:
+    service-name: distro
+    mongo-URI: mongodb://localhost:27017/
+    level: 1
+    log-database: test
+    log-collection: test

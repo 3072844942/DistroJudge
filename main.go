@@ -9,12 +9,13 @@ import (
 	"fmt"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc"
+	logger "log"
 	"net"
 	"net/http"
 )
 
 var (
-	configFile = flag.String("f", "etc/dev.yaml", "the config file")
+	configFile = flag.String("f", "/home/lunave/Project/DistroJudge/etc/dev.yml", "the config file")
 	//addr = flag.String("addr", "localhost:50051", "the address to connect to")
 )
 
@@ -30,6 +31,11 @@ func main() {
 
 	var c config.Config
 	config.MustLoad(&c, *configFile)
+
+	// 日志选项
+	client := log.NewClient(&c.DbLogConfig)
+	defer client.Close()
+	logger.SetOutput(client)
 
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", c.DistroConfig.Port))
 	if err != nil {
