@@ -5,7 +5,6 @@ import (
 	"DistroJudge/log"
 	poolExecutor "DistroJudge/pool"
 	"context"
-	"github.com/dubbogo/gost/log/logger"
 	"runtime"
 	"time"
 )
@@ -38,22 +37,15 @@ func NewServer(c *DistroConfig) (*Server, error) {
 
 func (d *Server) Heart(c context.Context, ping *api.Ping) (*api.Pong, error) {
 	if ping.MaxPoolSize != 0 {
-		logger.Infof("change pool capacity. %d -> %d", pool.GetCap(), ping.MaxPoolSize)
+		log.Infof("change pool capacity. %d -> %d", pool.GetCap(), ping.MaxPoolSize)
 		pool.SetCap(ping.MaxPoolSize)
 	}
-
-	//percentages, _ := cpu.Percent(1*time.Second, false)
-	//sumPercentage := float64(0)
-	//for _, percentage := range percentages {
-	//	sumPercentage += percentage
-	//}
-	//cpuUsage := sumPercentage / float64(len(percentages))
 
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
 
 	return &api.Pong{
-		Cpu:                0,
+		Cpu:                uint64(runtime.NumCPU()),
 		MemoryAlloc:        m.Alloc,
 		TotalAlloc:         m.TotalAlloc,
 		Sys:                m.Sys,

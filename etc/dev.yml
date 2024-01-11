@@ -1,0 +1,12 @@
+distro:
+    port: 50051
+    pool:
+        max-pool-size: 10
+
+log:
+    service-name: distro
+    level: 3
+    mongo: false
+    mongo-URI: mongodb://admin:123456@47.115.218.189:27017/distro
+    log-database: distro
+    log-collection: test

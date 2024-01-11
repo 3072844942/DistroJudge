@@ -31,6 +31,10 @@ func main() {
 	var c config.Config
 	config.MustLoad(&c, *configFile)
 
+	// 日志选项
+	client := log.NewClient(&c.DbLogConfig)
+	defer client.Close()
+
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", c.DistroConfig.Port))
 	if err != nil {
 		log.Errorf("failed to listen: %v", err)

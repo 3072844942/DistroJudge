@@ -39,7 +39,7 @@ message Ping {
 }
 
 message Pong {
-  double Cpu = 1;                // cpu使用情况
+  uint64 Cpu = 1;                // cpu使用情况
   uint64 MemoryAlloc = 2;        // 程序当前使用内存量
   uint64 TotalAlloc = 3;         // 程序总分配内存量
   uint64 Sys = 4;                // 系统内存

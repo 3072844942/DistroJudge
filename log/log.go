@@ -4,6 +4,7 @@ import (
 	timeFormat "DistroJudge/time"
 	"context"
 	"fmt"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"runtime"
@@ -12,16 +13,17 @@ import (
 
 // level
 const (
-	SLOW  = 0
-	INFO  = 1
-	WARN  = 2
-	ERROR = 3
+	SLOW = iota
+	INFO
+	WARN
+	ERROR
 )
 
 type DbLogConfig struct {
 	ServiceName   string `yaml:"service-name"`
-	MongoURI      string `yaml:"mongo-URI"`
 	Level         int64  `yaml:"level"`
+	Mongo         bool   `yaml:"mongo"`
+	MongoURI      string `yaml:"mongo-URI"`
 	LogDatabase   string `yaml:"log-database"`
 	LogCollection string `yaml:"log-collection"`
 }
@@ -31,6 +33,7 @@ type DbLog struct {
 	config        *DbLogConfig
 	ServiceName   string
 	level         int64
+	mongo         bool
 	logDatabase   string
 	logCollection string
 }
@@ -38,35 +41,42 @@ type DbLog struct {
 var DLog *DbLog
 
 func NewClient(c *DbLogConfig) *DbLog {
-	client, err := mongo.Connect(context.Background(), options.Client().ApplyURI(c.MongoURI))
-	if err != nil {
-		Errorf("failed to connect mongo. err: %v", err)
-	}
-
 	DLog = &DbLog{
 		ServiceName:   c.ServiceName,
 		config:        c,
-		Client:        client,
 		level:         c.Level,
 		logCollection: c.LogCollection,
 		logDatabase:   c.LogDatabase,
+		mongo:         c.Mongo,
+	}
+
+	var err error
+	if c.Mongo {
+		DLog.Client, err = mongo.Connect(context.Background(), options.Client().ApplyURI(c.MongoURI))
+		if err != nil {
+			panic(err)
+		}
 	}
 	return DLog
 }
 
 func Infof(message string, v ...interface{}) {
-	log("info", fmt.Sprintf(message, v...))
+	log(INFO, "info", fmt.Sprintf(message, v...))
 }
 
 func Warnf(message string, v ...interface{}) {
-	log("warn", fmt.Sprintf(message, v...))
+	log(WARN, "warn", fmt.Sprintf(message, v...))
 }
 
 func Errorf(message string, v ...interface{}) {
-	log("error", fmt.Sprintf(message, v...))
+	log(ERROR, "error", fmt.Sprintf(message, v...))
 }
 
-func log(level, message string) {
+func log(level int, levelName, message string) {
+	if DLog.level < int64(level) {
+		return
+	}
+
 	//fmt.Println(message)
 	defer func() {
 		if err := recover(); err != nil {
@@ -75,9 +85,9 @@ func log(level, message string) {
 	}()
 	// 发送数据
 	_, file, line, _ := runtime.Caller(2)
-	strLog := fmt.Sprintf("## %s ## %s ## %s ## action ## %s ## %s:%d",
+	strLog := fmt.Sprintf("## %s ## %s ## %s ## %s ## %s:%d",
 		time.Now().Format(timeFormat.TimeLayout),
-		level,
+		levelName,
 		DLog.ServiceName,
 		message,
 		file,
@@ -87,28 +97,25 @@ func log(level, message string) {
 		NewClient(DLog.config)
 	}
 
-	_, err := DLog.Write([]byte(strLog))
+	fmt.Println(strLog)
+	if !DLog.mongo {
+		return
+	}
+
+	m := bson.M{
+		"time":    time.Now().Format(timeFormat.TimeLayout),
+		"log":     message,
+		"service": DLog.ServiceName,
+		"level":   level,
+	}
+	_, err := DLog.Client.Database(DLog.logDatabase).Collection(DLog.logCollection).InsertOne(context.Background(), m)
+	//_, err := DLog.Write([]byte(strLog))
 	if err != nil {
 		//超时失败重连
 		NewClient(DLog.config)
 	}
-
 }
 
 func (l *DbLog) Close() {
 	_ = l.Client.Disconnect(context.Background())
-}
-
-func (l *DbLog) Write(b []byte) (n int, err error) {
-	defer func() {
-		if err := recover(); err != nil {
-			fmt.Printf("dlog Recovered err: %+v", err)
-		}
-	}()
-
-	_, err = l.Client.Database(l.logDatabase).Collection(l.logCollection).InsertOne(context.Background(), b)
-	if err != nil {
-		Warnf("dbLog err:%+v", err)
-	}
-	return
 }
