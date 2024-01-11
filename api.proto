@@ -20,6 +20,9 @@ message Task {
 
   uint64   CpuTime = 5;
   uint64   Memory = 6;
+
+  string SourceIp = 7;
+  string SourcePort = 8;
 }
 
 message Result {

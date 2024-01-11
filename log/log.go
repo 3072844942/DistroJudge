@@ -29,6 +29,7 @@ type DbLogConfig struct {
 }
 
 type DbLog struct {
+	ctx           context.Context
 	Client        *mongo.Client
 	config        *DbLogConfig
 	ServiceName   string
@@ -42,6 +43,7 @@ var DLog *DbLog
 
 func NewClient(c *DbLogConfig) *DbLog {
 	DLog = &DbLog{
+		ctx:           context.Background(),
 		ServiceName:   c.ServiceName,
 		config:        c,
 		level:         c.Level,
@@ -52,7 +54,7 @@ func NewClient(c *DbLogConfig) *DbLog {
 
 	var err error
 	if c.Mongo {
-		DLog.Client, err = mongo.Connect(context.Background(), options.Client().ApplyURI(c.MongoURI))
+		DLog.Client, err = mongo.Connect(DLog.ctx, options.Client().ApplyURI(c.MongoURI))
 		if err != nil {
 			panic(err)
 		}
@@ -108,7 +110,7 @@ func log(level int, levelName, message string) {
 		"service": DLog.ServiceName,
 		"level":   level,
 	}
-	_, err := DLog.Client.Database(DLog.logDatabase).Collection(DLog.logCollection).InsertOne(context.Background(), m)
+	_, err := DLog.Client.Database(DLog.logDatabase).Collection(DLog.logCollection).InsertOne(DLog.ctx, m)
 	//_, err := DLog.Write([]byte(strLog))
 	if err != nil {
 		//超时失败重连
@@ -117,5 +119,5 @@ func log(level int, levelName, message string) {
 }
 
 func (l *DbLog) Close() {
-	_ = l.Client.Disconnect(context.Background())
+	_ = l.Client.Disconnect(l.ctx)
 }

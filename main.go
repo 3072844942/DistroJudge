@@ -14,18 +14,10 @@ import (
 )
 
 var (
-	configFile = flag.String("f", "etc/dev.yaml", "the config file")
-	//addr = flag.String("addr", "localhost:50051", "the address to connect to")
+	configFile = flag.String("f", "etc/dev.yml", "the config file")
 )
 
 func main() {
-	//conn, err := grpc.Dial(*addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	//if err != nil {
-	//	log.Fatalf("did not connect: %v", err)
-	//}
-	//defer conn.Close()
-	//c := pb.NewGreeterClient(conn)
-
 	flag.Parse()
 
 	var c config.Config
