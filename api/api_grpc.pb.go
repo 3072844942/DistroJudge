@@ -20,6 +20,7 @@ const _ = grpc.SupportPackageIsVersion7
 
 const (
 	DistroServer_Heart_FullMethodName   = "/api.DistroServer/Heart"
+	DistroServer_Join_FullMethodName    = "/api.DistroServer/Join"
 	DistroServer_Execute_FullMethodName = "/api.DistroServer/Execute"
 	DistroServer_Caller_FullMethodName  = "/api.DistroServer/Caller"
 )
@@ -30,6 +31,8 @@ const (
 type DistroServerClient interface {
 	// 心跳检测， 更新状态配置
 	Heart(ctx context.Context, in *Ping, opts ...grpc.CallOption) (*Pong, error)
+	// 加入集群
+	Join(ctx context.Context, in *Node, opts ...grpc.CallOption) (*ACK, error)
 	// 提交任务
 	Execute(ctx context.Context, in *Task, opts ...grpc.CallOption) (*ACK, error)
 	// 异步回执
@@ -47,6 +50,15 @@ func NewDistroServerClient(cc grpc.ClientConnInterface) DistroServerClient {
 func (c *distroServerClient) Heart(ctx context.Context, in *Ping, opts ...grpc.CallOption) (*Pong, error) {
 	out := new(Pong)
 	err := c.cc.Invoke(ctx, DistroServer_Heart_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *distroServerClient) Join(ctx context.Context, in *Node, opts ...grpc.CallOption) (*ACK, error) {
+	out := new(ACK)
+	err := c.cc.Invoke(ctx, DistroServer_Join_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -77,6 +89,8 @@ func (c *distroServerClient) Caller(ctx context.Context, in *Result, opts ...grp
 type DistroServerServer interface {
 	// 心跳检测， 更新状态配置
 	Heart(context.Context, *Ping) (*Pong, error)
+	// 加入集群
+	Join(context.Context, *Node) (*ACK, error)
 	// 提交任务
 	Execute(context.Context, *Task) (*ACK, error)
 	// 异步回执
@@ -90,6 +104,9 @@ type UnimplementedDistroServerServer struct {
 
 func (UnimplementedDistroServerServer) Heart(context.Context, *Ping) (*Pong, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Heart not implemented")
+}
+func (UnimplementedDistroServerServer) Join(context.Context, *Node) (*ACK, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Join not implemented")
 }
 func (UnimplementedDistroServerServer) Execute(context.Context, *Task) (*ACK, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Execute not implemented")
@@ -124,6 +141,24 @@ func _DistroServer_Heart_Handler(srv interface{}, ctx context.Context, dec func(
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(DistroServerServer).Heart(ctx, req.(*Ping))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DistroServer_Join_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Node)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DistroServerServer).Join(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DistroServer_Join_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DistroServerServer).Join(ctx, req.(*Node))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -174,6 +209,10 @@ var DistroServer_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Heart",
 			Handler:    _DistroServer_Heart_Handler,
+		},
+		{
+			MethodName: "Join",
+			Handler:    _DistroServer_Join_Handler,
 		},
 		{
 			MethodName: "Execute",

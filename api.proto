@@ -56,9 +56,18 @@ message Pong {
   int64 Time = 10;              // 当前系统时间
 }
 
+message Node {
+  string id = 1;
+  string ip = 2;
+  string port = 3;
+  int64 weight = 4;
+}
+
 service DistroServer {
   // 心跳检测， 更新状态配置
   rpc Heart(Ping) returns (Pong);
+  // 加入集群
+  rpc Join(Node) returns (ACK);
 
   // 提交任务
   rpc Execute(Task) returns (ACK);

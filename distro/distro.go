@@ -8,8 +8,7 @@ import (
 	poolExecutor "DistroJudge/pool"
 	snow_flake "DistroJudge/snow-flake"
 	"context"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
+	"fmt"
 	"math/rand"
 	"runtime"
 	"strconv"
@@ -19,16 +18,20 @@ import (
 var (
 	snowFlake *snow_flake.SnowFlake
 	pool      *poolExecutor.Pool
-	client    map[string]api.DistroServerClient
 	workDir   string
+	cluster   *Cluster
 )
 
 type DistroConfig struct {
-	Port    int    `yaml:"port"`
+	Ip      string `yaml:"ip"`
+	Port    string `yaml:"port"`
 	WorkDir string `yaml:"work-dir"`
-	Pool    struct {
+
+	Pool struct {
 		MaxPoolSize uint64 `yaml:"max-pool-size"`
-	}
+	} `yaml:"pool"`
+
+	ClusterConfig ClusterConfig `yaml:"cluster"`
 }
 
 type Server struct {
@@ -37,15 +40,20 @@ type Server struct {
 
 func NewServer(c *DistroConfig) (*Server, error) {
 	var err error
-
+	// 判题池初始化
 	pool, err = poolExecutor.NewPool(c.Pool.MaxPoolSize)
 	if err != nil {
-		log.Errorf("pool executor err. err: %v", err)
+		panic(fmt.Sprintf("pool executor err. err: %v", err))
 	}
-
+	// 雪花算法
 	snowFlake, _ = snow_flake.GetSnowFlak(int64(rand.Intn(32)), int64(rand.Intn(32)))
-
+	// 工作目录
 	workDir = c.WorkDir
+	// 集群化配置
+	cluster, err = newCluster(&c.ClusterConfig)
+	if err != nil {
+		panic(fmt.Sprintf("cluster init err. err: %v", err))
+	}
 
 	return &Server{}, nil
 }
@@ -73,7 +81,22 @@ func (d *Server) Heart(c context.Context, ping *api.Ping) (*api.Pong, error) {
 	}, nil
 }
 
+func (d *Server) Join(c context.Context, node *api.Node) (*api.ACK, error) {
+	_ = cluster.Join(node)
+	return &api.ACK{
+		Id: node.Id,
+	}, nil
+}
+
 func (d *Server) Execute(c context.Context, task *api.Task) (*api.ACK, error) {
+	client := cluster.Pop()
+	if client != nil {
+		return client.Execute(c, task)
+	}
+	return d.Execute(c, task)
+}
+
+func (d *Server) execute(c context.Context, task *api.Task) (*api.ACK, error) {
 	comp := compile.Core{}
 
 	dir := file.Path(workDir + "/" + task.Id)
@@ -89,18 +112,11 @@ func (d *Server) Execute(c context.Context, task *api.Task) (*api.ACK, error) {
 				log.Errorf("judge err. err: %v", err)
 			}
 
-			ip, port := v[6].(string), v[7].(string)
-			addr := ip + ":" + port
-
-			if _, st := client[addr]; !st {
-				conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
-				if err != nil {
-					log.Errorf("connect %s:%s err. err: %v", ip, port, err)
-				}
-
-				client[addr] = api.NewDistroServerClient(conn)
+			serverClient, err := cluster.FindClient(v[6].(string), v[7].(string))
+			if err != nil {
+				log.Errorf("respone %+v err. err: %v", run, err)
+				return
 			}
-			serverClient := client[addr]
 
 			id, _ := snowFlake.NextId()
 			out, _ := file.Read(run.OutPath)

@@ -1,6 +1,10 @@
 distro:
     port: 50051
     work-dir: D:/data
+    cluster:
+        master: true
+        ip: localhost
+        port: 50051
     pool:
         max-pool-size: 10
 
