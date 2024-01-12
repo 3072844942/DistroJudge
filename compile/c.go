@@ -44,7 +44,7 @@ func (c c_Compile) Compile(code string, language api.Task_Language, dir string) 
 
 func (c c_Compile) Run(ctx context.Context, path string, language api.Task_Language, in string, t, memory uint64) (*Result, error) {
 	// 创建一个带有超时的context
-	ctxWithTimeout, cancel := context.WithTimeout(ctx, time.Duration(t)*time.Second)
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, time.Duration(t)*time.Millisecond)
 	defer cancel()
 
 	cmd := sandbox.CommandContext(ctxWithTimeout, path)
