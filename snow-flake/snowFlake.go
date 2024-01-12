@@ -1,6 +1,9 @@
 package snow_flake
 
 import (
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -9,6 +12,7 @@ import (
 // @Description: 全局唯一雪花算法
 // 1位无用位； 41位时间戳; 5位机器ID; 5位机房ID; 12位序列
 type SnowFlake struct {
+	sync.Mutex
 	// 数据中心(机房) id
 	datacenterId int64
 	// 机器ID
@@ -84,12 +88,12 @@ func GetSnowFlak(workerId int64, datacenterId int64) (*SnowFlake, error) {
 	snowFlake.timestampLeftShift = snowFlake.sequenceBits + snowFlake.workerIdBits + snowFlake.datacenterIdBits
 	snowFlake.sequenceMask = -1 ^ (-1 << snowFlake.sequenceBits)
 
-	//if workerId > snowFlake.maxWorkerId || workerId < 0 {
-	//	return nil, status.Error(codes.FailedPrecondition, "worker Id can't be greater than %d or less than 0")
-	//}
-	//if datacenterId > snowFlake.maxDatacenterId || datacenterId < 0 {
-	//	return nil, status.Error(codes.FailedPrecondition, "datacenter Id can't be greater than %d or less than 0")
-	//}
+	if workerId > snowFlake.maxWorkerId || workerId < 0 {
+		return nil, status.Error(codes.FailedPrecondition, "worker Id can't be greater than %d or less than 0")
+	}
+	if datacenterId > snowFlake.maxDatacenterId || datacenterId < 0 {
+		return nil, status.Error(codes.FailedPrecondition, "datacenter Id can't be greater than %d or less than 0")
+	}
 
 	return snowFlake, nil
 }
@@ -112,16 +116,15 @@ func (s *SnowFlake) GetLastTimestamp() int64 {
 // NextId 获取下一个随机的ID
 func (s *SnowFlake) NextId() (int64, error) {
 	// 加锁互斥
-	lock := &sync.Mutex{}
-	lock.Lock()
-	defer lock.Unlock()
+	s.Lock()
+	defer s.Unlock()
 
 	// 获取当前时间戳，单位毫秒
-	timestamp := time.Now().Unix()
+	timestamp := time.Now().UnixMilli()
 
-	//if timestamp < s.lastTimestamp {
-	//	return 0, status.Errorf(codes.Unknown, "Clock moved backwards.  Refusing to generate id for "+strconv.FormatInt(s.lastTimestamp-timestamp, 10)+" milliseconds")
-	//}
+	if timestamp < s.lastTimestamp {
+		return 0, status.Errorf(codes.Unknown, "Clock moved backwards.  Refusing to generate id for "+strconv.FormatInt(s.lastTimestamp-timestamp, 10)+" milliseconds")
+	}
 
 	// 去重
 	if s.lastTimestamp == timestamp {

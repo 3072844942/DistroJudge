@@ -20,11 +20,13 @@ var (
 	snowFlake *snow_flake.SnowFlake
 	pool      *poolExecutor.Pool
 	client    map[string]api.DistroServerClient
+	workDir   string
 )
 
 type DistroConfig struct {
-	Port int `yaml:"port"`
-	Pool struct {
+	Port    int    `yaml:"port"`
+	WorkDir string `yaml:"work-dir"`
+	Pool    struct {
 		MaxPoolSize uint64 `yaml:"max-pool-size"`
 	}
 }
@@ -42,6 +44,8 @@ func NewServer(c *DistroConfig) (*Server, error) {
 	}
 
 	snowFlake, _ = snow_flake.GetSnowFlak(int64(rand.Intn(32)), int64(rand.Intn(32)))
+
+	workDir = c.WorkDir
 
 	return &Server{}, nil
 }
@@ -72,7 +76,8 @@ func (d *Server) Heart(c context.Context, ping *api.Ping) (*api.Pong, error) {
 func (d *Server) Execute(c context.Context, task *api.Task) (*api.ACK, error) {
 	comp := compile.Core{}
 
-	path, err := comp.Compile(task.Code, task.Type)
+	dir := workDir + "/" + task.Id
+	path, err := comp.Compile(task.Code, task.Type, dir)
 	if err != nil {
 		return nil, err
 	}

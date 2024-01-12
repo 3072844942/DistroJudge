@@ -1,5 +1,6 @@
 distro:
     port: 50051
+    work-dir: D:\\data
     pool:
         max-pool-size: 10
 
