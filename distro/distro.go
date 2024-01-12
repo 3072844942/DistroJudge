@@ -76,7 +76,7 @@ func (d *Server) Heart(c context.Context, ping *api.Ping) (*api.Pong, error) {
 func (d *Server) Execute(c context.Context, task *api.Task) (*api.ACK, error) {
 	comp := compile.Core{}
 
-	dir := workDir + "/" + task.Id
+	dir := file.Path(workDir + "/" + task.Id)
 	path, err := comp.Compile(task.Code, task.Type, dir)
 	if err != nil {
 		return nil, err
@@ -84,9 +84,7 @@ func (d *Server) Execute(c context.Context, task *api.Task) (*api.ACK, error) {
 
 	t := &poolExecutor.Task{
 		Handler: func(v ...any) {
-			ctx, cancelFunc := context.WithTimeout(v[0].(context.Context), time.Duration(task.CpuTime)*time.Millisecond)
-			defer cancelFunc()
-			run, err := comp.Run(ctx, v[1].(string), v[2].(api.Task_Language), v[3].(string), v[4].(uint64), v[5].(uint64))
+			run, err := comp.Run(v[0].(context.Context), v[1].(string), v[2].(api.Task_Language), v[3].(string), v[4].(uint64), v[5].(uint64))
 			if err != nil {
 				log.Errorf("judge err. err: %v", err)
 			}
@@ -113,7 +111,7 @@ func (d *Server) Execute(c context.Context, task *api.Task) (*api.ACK, error) {
 				Memory:  run.Memory,
 			})
 		},
-		Params: []any{c, path, task.Type, task.In, task.CpuTime, task.Memory, task.SourceIp, task.SourcePort},
+		Params: []any{context.Background(), path, task.Type, task.In, task.CpuTime, task.Memory, task.SourceIp, task.SourcePort},
 	}
 
 	err = pool.Put(t)
