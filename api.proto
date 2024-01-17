@@ -3,19 +3,29 @@ option go_package = "./api";
 
 package api;
 
+enum Language {
+  C = 0;
+  JAVA = 1;
+  PYTHON = 2;
+  GOLANG = 3;
+}
+
+enum Status {
+  // 状态，即选举状态。当节点处于该状态时，它会认为当前集群中没有 Leader，因此自己进入选举状态。
+  Looking = 0;
+  // 状态，即领导者状态，表示已经选出主，且当前节点为 Leader。
+  Leading = 1;
+  // 状态，即跟随者状态，集群中已经选出主后，其他非主节点状态更新为 Following，表示对 Leader 的追随。
+  Following = 2;
+  // 状态，即观察者状态，表示当前节点为 Observer，持观望态度，没有投票权和选举权。
+  Observing = 3;
+}
 
 message Task {
   string  Id = 1;
 
   string  In = 2;
   string  Code = 3;
-
-  enum Language {
-    C = 0;
-    JAVA = 1;
-    PYTHON = 2;
-    GOLANG = 3;
-  }
   Language  type = 4;
 
   uint64   CpuTime = 5;
@@ -38,7 +48,7 @@ message ACK {
 }
 
 message Ping {
-  uint64 MaxPoolSize = 1;        // 最大工作线程
+  int64 time = 1;
 }
 
 message Pong {
@@ -48,27 +58,51 @@ message Pong {
   uint64 Sys = 4;                // 系统内存
   uint32 NumGC = 5;              // GC次数
 
-  uint64 ActiveCount = 6;        // 当前活跃任务数
-  uint64 CompletedTaskCount = 7; // 当前已完成任务数
-  uint64 WaitCount = 8;          // 当前等待任务数
-  uint64 MaxPoolSize = 9;        // 最大工作线程
+  string WorkDir = 10;
+  uint64 ActiveCount = 11;        // 当前活跃任务数
+  uint64 CompletedTaskCount = 12; // 当前已完成任务数
+  uint64 WaitCount = 13;          // 当前等待任务数
+  uint64 MaxPoolSize = 14;        // 最大工作线程
 
-  int64 Time = 10;              // 当前系统时间
+  Status status = 6;           // 节点状态
+
+  int64 Time = 20;              // 当前系统时间
 }
 
 message Node {
   string id = 1;
   string ip = 2;
   string port = 3;
-  int64 weight = 4;
+  uint64 weight = 4;
+
+  Status status = 5;           // 节点状态
+}
+
+message Distro {
+  uint64 MaxPoolSize = 1;        // 最大工作线程
+}
+
+message Cluster {
+  string MasterAddr = 1;
+  repeated string Addr = 2;
+  repeated string clientAddr = 3;
 }
 
 service DistroServer {
   // 心跳检测， 更新状态配置
   rpc Heart(Ping) returns (Pong);
   // 加入集群
-  rpc Join(Node) returns (ACK);
+  rpc Join(Node) returns (Cluster);
+  // 发起选举
+  rpc Election (Ping) returns (Cluster);
+  // 获取集群信息
+  rpc Candidate (Ping) returns (Cluster);
+  // 宣誓主权
+  rpc Victory (Node) returns (Node);
+  rpc Checkout (Cluster) returns (ACK);
 
+  // 更改判题配置
+  rpc Modify(Distro) returns (Pong);
   // 提交任务
   rpc Execute(Task) returns (ACK);
   // 异步回执

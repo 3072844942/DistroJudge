@@ -5,6 +5,7 @@ distro:
         master: true
         ip: localhost
         port: 50051
+        master-addr: localhost:50051
     pool:
         max-pool-size: 10
 

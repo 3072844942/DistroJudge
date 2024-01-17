@@ -19,10 +19,15 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	DistroServer_Heart_FullMethodName   = "/api.DistroServer/Heart"
-	DistroServer_Join_FullMethodName    = "/api.DistroServer/Join"
-	DistroServer_Execute_FullMethodName = "/api.DistroServer/Execute"
-	DistroServer_Caller_FullMethodName  = "/api.DistroServer/Caller"
+	DistroServer_Heart_FullMethodName     = "/api.DistroServer/Heart"
+	DistroServer_Join_FullMethodName      = "/api.DistroServer/Join"
+	DistroServer_Election_FullMethodName  = "/api.DistroServer/Election"
+	DistroServer_Candidate_FullMethodName = "/api.DistroServer/Candidate"
+	DistroServer_Victory_FullMethodName   = "/api.DistroServer/Victory"
+	DistroServer_Checkout_FullMethodName  = "/api.DistroServer/Checkout"
+	DistroServer_Modify_FullMethodName    = "/api.DistroServer/Modify"
+	DistroServer_Execute_FullMethodName   = "/api.DistroServer/Execute"
+	DistroServer_Caller_FullMethodName    = "/api.DistroServer/Caller"
 )
 
 // DistroServerClient is the client API for DistroServer service.
@@ -32,7 +37,16 @@ type DistroServerClient interface {
 	// 心跳检测， 更新状态配置
 	Heart(ctx context.Context, in *Ping, opts ...grpc.CallOption) (*Pong, error)
 	// 加入集群
-	Join(ctx context.Context, in *Node, opts ...grpc.CallOption) (*ACK, error)
+	Join(ctx context.Context, in *Node, opts ...grpc.CallOption) (*Cluster, error)
+	// 发起选举
+	Election(ctx context.Context, in *Ping, opts ...grpc.CallOption) (*Cluster, error)
+	// 获取集群信息
+	Candidate(ctx context.Context, in *Ping, opts ...grpc.CallOption) (*Cluster, error)
+	// 宣誓主权
+	Victory(ctx context.Context, in *Node, opts ...grpc.CallOption) (*Node, error)
+	Checkout(ctx context.Context, in *Cluster, opts ...grpc.CallOption) (*ACK, error)
+	// 更改判题配置
+	Modify(ctx context.Context, in *Distro, opts ...grpc.CallOption) (*Pong, error)
 	// 提交任务
 	Execute(ctx context.Context, in *Task, opts ...grpc.CallOption) (*ACK, error)
 	// 异步回执
@@ -56,9 +70,54 @@ func (c *distroServerClient) Heart(ctx context.Context, in *Ping, opts ...grpc.C
 	return out, nil
 }
 
-func (c *distroServerClient) Join(ctx context.Context, in *Node, opts ...grpc.CallOption) (*ACK, error) {
-	out := new(ACK)
+func (c *distroServerClient) Join(ctx context.Context, in *Node, opts ...grpc.CallOption) (*Cluster, error) {
+	out := new(Cluster)
 	err := c.cc.Invoke(ctx, DistroServer_Join_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *distroServerClient) Election(ctx context.Context, in *Ping, opts ...grpc.CallOption) (*Cluster, error) {
+	out := new(Cluster)
+	err := c.cc.Invoke(ctx, DistroServer_Election_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *distroServerClient) Candidate(ctx context.Context, in *Ping, opts ...grpc.CallOption) (*Cluster, error) {
+	out := new(Cluster)
+	err := c.cc.Invoke(ctx, DistroServer_Candidate_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *distroServerClient) Victory(ctx context.Context, in *Node, opts ...grpc.CallOption) (*Node, error) {
+	out := new(Node)
+	err := c.cc.Invoke(ctx, DistroServer_Victory_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *distroServerClient) Checkout(ctx context.Context, in *Cluster, opts ...grpc.CallOption) (*ACK, error) {
+	out := new(ACK)
+	err := c.cc.Invoke(ctx, DistroServer_Checkout_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *distroServerClient) Modify(ctx context.Context, in *Distro, opts ...grpc.CallOption) (*Pong, error) {
+	out := new(Pong)
+	err := c.cc.Invoke(ctx, DistroServer_Modify_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +149,16 @@ type DistroServerServer interface {
 	// 心跳检测， 更新状态配置
 	Heart(context.Context, *Ping) (*Pong, error)
 	// 加入集群
-	Join(context.Context, *Node) (*ACK, error)
+	Join(context.Context, *Node) (*Cluster, error)
+	// 发起选举
+	Election(context.Context, *Ping) (*Cluster, error)
+	// 获取集群信息
+	Candidate(context.Context, *Ping) (*Cluster, error)
+	// 宣誓主权
+	Victory(context.Context, *Node) (*Node, error)
+	Checkout(context.Context, *Cluster) (*ACK, error)
+	// 更改判题配置
+	Modify(context.Context, *Distro) (*Pong, error)
 	// 提交任务
 	Execute(context.Context, *Task) (*ACK, error)
 	// 异步回执
@@ -105,8 +173,23 @@ type UnimplementedDistroServerServer struct {
 func (UnimplementedDistroServerServer) Heart(context.Context, *Ping) (*Pong, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Heart not implemented")
 }
-func (UnimplementedDistroServerServer) Join(context.Context, *Node) (*ACK, error) {
+func (UnimplementedDistroServerServer) Join(context.Context, *Node) (*Cluster, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Join not implemented")
+}
+func (UnimplementedDistroServerServer) Election(context.Context, *Ping) (*Cluster, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Election not implemented")
+}
+func (UnimplementedDistroServerServer) Candidate(context.Context, *Ping) (*Cluster, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Candidate not implemented")
+}
+func (UnimplementedDistroServerServer) Victory(context.Context, *Node) (*Node, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Victory not implemented")
+}
+func (UnimplementedDistroServerServer) Checkout(context.Context, *Cluster) (*ACK, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Checkout not implemented")
+}
+func (UnimplementedDistroServerServer) Modify(context.Context, *Distro) (*Pong, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Modify not implemented")
 }
 func (UnimplementedDistroServerServer) Execute(context.Context, *Task) (*ACK, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Execute not implemented")
@@ -163,6 +246,96 @@ func _DistroServer_Join_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
+func _DistroServer_Election_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Ping)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DistroServerServer).Election(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DistroServer_Election_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DistroServerServer).Election(ctx, req.(*Ping))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DistroServer_Candidate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Ping)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DistroServerServer).Candidate(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DistroServer_Candidate_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DistroServerServer).Candidate(ctx, req.(*Ping))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DistroServer_Victory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Node)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DistroServerServer).Victory(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DistroServer_Victory_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DistroServerServer).Victory(ctx, req.(*Node))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DistroServer_Checkout_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Cluster)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DistroServerServer).Checkout(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DistroServer_Checkout_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DistroServerServer).Checkout(ctx, req.(*Cluster))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DistroServer_Modify_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Distro)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DistroServerServer).Modify(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DistroServer_Modify_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DistroServerServer).Modify(ctx, req.(*Distro))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _DistroServer_Execute_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(Task)
 	if err := dec(in); err != nil {
@@ -213,6 +386,26 @@ var DistroServer_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Join",
 			Handler:    _DistroServer_Join_Handler,
+		},
+		{
+			MethodName: "Election",
+			Handler:    _DistroServer_Election_Handler,
+		},
+		{
+			MethodName: "Candidate",
+			Handler:    _DistroServer_Candidate_Handler,
+		},
+		{
+			MethodName: "Victory",
+			Handler:    _DistroServer_Victory_Handler,
+		},
+		{
+			MethodName: "Checkout",
+			Handler:    _DistroServer_Checkout_Handler,
+		},
+		{
+			MethodName: "Modify",
+			Handler:    _DistroServer_Modify_Handler,
 		},
 		{
 			MethodName: "Execute",

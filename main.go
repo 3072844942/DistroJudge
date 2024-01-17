@@ -11,6 +11,7 @@ import (
 	"google.golang.org/grpc"
 	"net"
 	"net/http"
+	"strconv"
 )
 
 var (
@@ -27,7 +28,8 @@ func main() {
 	client := log.NewClient(&c.DbLogConfig)
 	defer client.Close()
 
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", c.DistroConfig.Port))
+	port, _ := strconv.ParseInt(c.DistroConfig.ClusterConfig.Port, 10, 64)
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
 		log.Errorf("failed to listen: %v", err)
 	}
